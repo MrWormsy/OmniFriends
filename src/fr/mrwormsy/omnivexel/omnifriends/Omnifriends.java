@@ -24,22 +24,24 @@ public class Omnifriends extends JavaPlugin {
 	
     @Override
     public void onEnable() {
+    	//Config file
+    	// Save a copy of the default config.yml if one is not there
+        this.saveDefaultConfig();
+    	
+    	//We set a value to the plugin
+    	plugin = this;
+    	
+    	//Load lang file
+    	loadLang();
     	
     	//Connect to MySQL server
     	OmniFriendsSQL.connect();
     	
-    	//Load lang file
-    	loadLang();
-      	
-    	//Config file
-    	// Save a copy of the default config.yml if one is not there
-        this.saveDefaultConfig();
-        
+    	//Load the OmniFriends Utilities
+    	FriendsUtils.load();
+    	
         //Register commands
         this.getCommand("friend").setExecutor(new Commands());
-        
-    	//We set a value to the plugin
-    	plugin = this;
     	
     }
     

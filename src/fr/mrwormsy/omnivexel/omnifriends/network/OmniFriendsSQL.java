@@ -6,26 +6,27 @@ import java.util.Properties;
 
 import com.mysql.jdbc.Connection;
 
-public class OmniFriendsSQL {
+import fr.mrwormsy.omnivexel.omnifriends.Omnifriends;
 
-	 // init database constants
+public class OmniFriendsSQL {
+	
+	//TODO SAY THAT THE FIRST TIME THEY WILL GET AN ERROR BECAUSE THE SQL's SETTINGS ARE NOT SET
+	
     private static final String DATABASE_DRIVER = "com.mysql.jdbc.Driver";
-    private static final String DATABASE_URL = "jdbc:mysql://localhost:3306/OmniFriends";
-    private static final String USERNAME = "root";
-    private static final String PASSWORD = "";
+    //private static final String DATABASE_URL = "jdbc:mysql://localhost:3306/OmniFriends";
+    //private static final String USERNAME = "root";
+    //private static final String PASSWORD = "";
     private static final String MAX_POOL = "250";
 
-    // init connection object
     private static Connection connection;
-    // init properties object
     private static Properties properties;
 
     // create properties
     private static Properties getProperties() {
         if (properties == null) {
             properties = new Properties();
-            properties.setProperty("user", USERNAME);
-            properties.setProperty("password", PASSWORD);
+            properties.setProperty("user", Omnifriends.getPlugin().getConfig().getString("DataBaseUsername"));
+            properties.setProperty("password", Omnifriends.getPlugin().getConfig().getString("DataBasePassword"));
             properties.setProperty("MaxPooledStatements", MAX_POOL);
         }
         return properties;
@@ -36,7 +37,8 @@ public class OmniFriendsSQL {
         if (connection == null) {
             try {
                 Class.forName(DATABASE_DRIVER);
-                connection = (Connection) DriverManager.getConnection(DATABASE_URL, getProperties());
+                //connection = (Connection) DriverManager.getConnection(DATABASE_URL, getProperties());
+                connection = (Connection) DriverManager.getConnection("jdbc:mysql://" + Omnifriends.getPlugin().getConfig().getString("DataBaseURL"), getProperties());
             } catch (ClassNotFoundException | SQLException e) {
                 e.printStackTrace();
             }

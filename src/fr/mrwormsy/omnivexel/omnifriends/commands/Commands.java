@@ -21,7 +21,7 @@ public class Commands implements CommandExecutor {
 				
 				// /friend or /friend list --> shows the friend list gui
 				if (args.length == 0 || (args.length == 1 && args[0].equalsIgnoreCase("list"))) {
-					FriendsUtils.openFriendsGUI(player, PlayerData.getPlayerId(player.getName()), 1);
+					FriendsUtils.openFriendsGUI(player, PlayerData.getPlayerId(player.getName()), 1);					
 				}
 				
 				// /friend add [friend] --> send a friend request to the player "friend" (note: a friend request last only 30 seconds...)

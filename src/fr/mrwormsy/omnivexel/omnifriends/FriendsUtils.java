@@ -20,7 +20,105 @@ import fr.mrwormsy.omnivexel.utils.Utils.HeadFromURL;
 
 public class FriendsUtils {
 
-	private static int rowsForFriendsToShow = 3; //TODO CONFIG
+	private static int rowsForFriendsToShow;
+	
+	//The load method run when the server starts...
+	public static void load() {
+		
+		//TABLES PART
+				
+		//We try to create this table (to register the player's informations)
+		//CREATE TABLE `omnifriends`.`playerdatabase` ( `idPlayer` INT NOT NULL AUTO_INCREMENT , `playerName` TINYTEXT NOT NULL , `idCustomHead` INT NOT NULL , `dateJoined` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , PRIMARY KEY (`idPlayer`)) ENGINE = MyISAM;
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+			
+			//We add the player database table where it creates a brand new "player id card" for the OmniFriends plugin
+			stmt.executeUpdate("CREATE TABLE IF NOT EXISTS `playerdatabase` ( `idPlayer` INT NOT NULL AUTO_INCREMENT , `playerName` TINYTEXT NOT NULL , `idCustomHead` INT NOT NULL , `dateJoined` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , PRIMARY KEY (`idPlayer`)) ENGINE = MyISAM;");
+			
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		
+		
+		//We try to create this table (to store the friends' connections)
+		//CREATE TABLE IF NOT EXISTS `friendlist` (`idFriend1` int(11) NOT NULL, `idFriend2` int(11) NOT NULL, `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`idFriend1`,`idFriend2`)) ENGINE=MyISAM;
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+			
+			//We add the friend list table where it connects two player with a friendaversary date
+			stmt.executeUpdate("CREATE TABLE IF NOT EXISTS `friendlist` (`idFriend1` int(11) NOT NULL, `idFriend2` int(11) NOT NULL, `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`idFriend1`,`idFriend2`)) ENGINE=MyISAM;");
+			
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		
+		//TODO Custom head table	
+		
+		//We set the number of rows for the GUI friendInventory
+		rowsForFriendsToShow = Omnifriends.getPlugin().getConfig().getInt("RowsForFriendsToShow");
+	}
+
+	//Check if the player is already registered in the player database
+	public static boolean isPlayerAlreadyRegistered(String player) {
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+			ResultSet result = stmt.executeQuery("SELECT idPlayer FROM playerdatabase WHERE playerName = '" + player.toLowerCase() + "'");
+			
+			//If result.next() returns true, the player is already registered
+			if (result.next()) {
+				result.close();
+				stmt.close();
+				return true;
+			}
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		
+		//Otherwise he is not
+		return false;
+	}
+	
+	//Get the id of an offline player (player.getName())
+	public static int getPlayerId(String player) {
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+			ResultSet result = stmt.executeQuery("SELECT idPlayer FROM playerdatabase WHERE playerName = '" + player.toLowerCase() + "'");
+			
+			//We return the id
+			if (result.next()) {
+				return result.getInt("idPlayer");
+			}
+			
+			result.close();
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		
+		//If the id is 0, there is a problem :o
+		return 0;
+	}
+	
+	//Add the player to the player database
+	public static void createPlayerDataBase(Player player) {
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+			stmt.execute("INSERT INTO `playerdatabase`(`playerName`, `idCustomHead`) VALUES ('" + player.getName().toLowerCase() + "','0')");
+			
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		
+	}
 	
 	//Return the friends list of a certain player
 	public static ArrayList<Integer> getFriendsListIds(int playerID) {

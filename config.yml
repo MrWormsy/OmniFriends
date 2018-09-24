@@ -1,2 +1,7 @@
-#Default config
-numberMaxOfPlayers: 50
+#MySQL Config
+DataBaseURL: 'localhost:3306/OmniFriends'
+DataBaseUsername: 'root'
+DataBasePassword: ''
+
+#Numbers of rows to show to the player when doing /friend (must be between 1 and 5, default 3)
+RowsForFriendsToShow: 3
