@@ -1,0 +1,8 @@
+# Use & for color codes.
+# %p is where the player name will get inserted.
+title-name: "&4[&PluginName&4]:"
+player-is-cool: "&f%p is cool."
+player-only: "Sorry but that can only be run by a player!"
+must-be-number: "&cYou need to specify a number, not a word."
+invalid-args: "&cInvalid args!"
+no-permissions: "&cYou don't have permission for that!"

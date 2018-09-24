@@ -1,0 +1,8 @@
+name: OmniFriends
+main:  fr.mrwormsy.omnivexel.omnifriends.Omnifriends
+version: 0.1
+depend:
+author: MrWormsy
+commands:
+   friend:
+      description: This is a demo command.
