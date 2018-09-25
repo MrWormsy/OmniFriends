@@ -9,7 +9,10 @@ public enum Lang {
 	FRIENDS_INVENTORY_NAME("friends_inventory_name", "&aFriends GUI"),
 	PREVIOUS_PAGE("previous_page", "&ePrevious page"),
 	NEXT_PAGE("next_page", "&eNext page"),
-	RETURN_ARROW("return_arrow", "&eReturn to your inventory")
+	RETURN_ARROW("return_arrow", "&eReturn to your inventory"),
+	JOIN_DATE("join_date", "&eJoined the &7<month>/<day>/<year>"),
+	NUMBER_FRIENDS("number_friends", "&7This player has &a<number> &7Friends"),
+	FRIEND_SINCE("friend_since", "&eFriendaversary &7<month>/<day>/<year>")
 	;
  
     private String path;

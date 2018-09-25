@@ -1,26 +1,82 @@
 package fr.mrwormsy.omnivexel.omnifriends;
 
+import java.lang.reflect.Field;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.UUID;
 
+import org.apache.commons.codec.binary.Base64;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
 import com.mysql.jdbc.Statement;
 
 import fr.mrwormsy.omnivexel.omnifriends.lang.Lang;
 import fr.mrwormsy.omnivexel.omnifriends.network.OmniFriendsSQL;
-import fr.mrwormsy.omnivexel.utils.Utils;
-import fr.mrwormsy.omnivexel.utils.Utils.HeadFromURL;
 
 public class FriendsUtils {
 
+	//Config setting to know how many rows we show to the player when doing /friend
 	private static int rowsForFriendsToShow;
+	
+	//Enum to get custom heads from URL
+	public enum HeadFromURL {
+		LEFT_ARROW("http://textures.minecraft.net/texture/86971dd881dbaf4fd6bcaa93614493c612f869641ed59d1c9363a3666a5fa6"), 
+		RIGHT_ARROW("http://textures.minecraft.net/texture/f32ca66056b72863e98f7f32bd7d94c7a0d796af691c9ac3a9136331352288f9"), 
+		BACKWARD("http://textures.minecraft.net/texture/74133f6ac3be2e2499a784efadcfffeb9ace025c3646ada67f3414e5ef3394");
+
+		private String url;
+
+		private HeadFromURL(String url) {
+			this.url = url;
+		}
+
+		public String getText() {
+			return this.url;
+		}
+	}
+	
+	// Get skull from URL
+	public static ItemStack getSkullFromURL(HeadFromURL headFromURL) {
+		ItemStack head = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
+		if (headFromURL.getText().isEmpty())
+			return head;
+
+		SkullMeta headMeta = (SkullMeta) head.getItemMeta();
+		GameProfile profile = new GameProfile(UUID.randomUUID(), null);
+		byte[] encodedData = Base64.encodeBase64(String.format("{textures:{SKIN:{url:\"%s\"}}}", headFromURL.getText()).getBytes());
+		profile.getProperties().put("textures", new Property("textures", new String(encodedData)));
+		Field profileField = null;
+		try {
+			profileField = headMeta.getClass().getDeclaredField("profile");
+			profileField.setAccessible(true);
+			profileField.set(headMeta, profile);
+		} catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException e1) {
+			e1.printStackTrace();
+		}
+		head.setItemMeta(headMeta);
+		return head;
+	}
+	
+	// Get player's skull
+	public static ItemStack getPlayerSkull(String player) {
+        ItemStack skull = new ItemStack(Material.SKULL_ITEM);
+        skull.setDurability((short)3);
+        SkullMeta sm = (SkullMeta) skull.getItemMeta();
+        sm.setOwner(player);
+        skull.setItemMeta(sm);
+        return skull;
+	}
 	
 	//The load method run when the server starts...
 	public static void load() {
@@ -62,6 +118,15 @@ public class FriendsUtils {
 		rowsForFriendsToShow = Omnifriends.getPlugin().getConfig().getInt("RowsForFriendsToShow");
 	}
 
+	//Check if this this plugin must be run inside the Omnivexel Project or not
+	public static boolean isPartOfOmnivexelProject() {
+		if (Omnifriends.getPlugin().getServer().getPluginManager().getPlugin("Omnivexel") != null) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
 	//Check if the player is already registered in the player database
 	public static boolean isPlayerAlreadyRegistered(String player) {
 		try {
@@ -104,6 +169,74 @@ public class FriendsUtils {
 		
 		//If the id is 0, there is a problem :o
 		return 0;
+	}
+	
+	//Get the id of an offline player (player.getName())
+	public static String getPlayerNameById(int idPlayer) {
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+			ResultSet result = stmt.executeQuery("SELECT playerName FROM playerdatabase WHERE idPlayer = '" + idPlayer + "'");
+				
+			//We return the name
+			if (result.next()) {
+				return result.getString("playerName");
+			}
+				
+			result.close();
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+			
+		return "";
+		}
+	
+	//Get the custom head id if the player got one (else return 0)
+	public static int getPlayerCustomHeadId(int idPlayer) {
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+			ResultSet result = stmt.executeQuery("SELECT idCustomHead FROM playerdatabase WHERE idPlayer = '" + idPlayer + "'");
+				
+			//We return the id
+			if (result.next()) {
+				return result.getInt("idCustomHead");
+			}
+				
+			result.close();
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+			
+		//If the id is 0, there is a problem :o
+		return 0;
+		}
+	
+	//Get the friendaversary date of two players
+	public static Timestamp getJoinDate(int idPlayer) {
+			
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+				
+			//We want to know when the player joined the server
+			ResultSet result = stmt.executeQuery("SELECT `dateJoined` FROM `playerdatabase` WHERE idPlayer = '" + idPlayer + "'");
+				
+			//If result.next() returns true, we return the join date
+			if (result.next()) {
+				return result.getTimestamp("dateJoined");
+			}
+				
+			result.close();
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+			
+		//If we reach here there is a problem :'(
+		return null;
 	}
 	
 	//Add the player to the player database
@@ -229,7 +362,7 @@ public class FriendsUtils {
 	
 	//Open the id's friend list to player, we suppose that the page exist already (that is to say the player has more than ((1 - page) * friendsToShow) friends)
 	public static void openFriendsGUI(Player player, int idPlayerFriendList, int page) {
-		
+				
 		//The GUI
 		Inventory friendGUI = Bukkit.createInventory(null, 9 * (rowsForFriendsToShow + 1), Lang.FRIENDS_INVENTORY_NAME.toString());
 		
@@ -249,7 +382,7 @@ public class FriendsUtils {
 			}
 			
 			//Then we put one of the player friend's informations
-			//friendGUI.setItem(forID, getFriendInfos(idPlayerFriendList, PlayerData.getPlayerId(player.getName())));
+			friendGUI.setItem(forID, getFriendInfos(friendsList.get(indexID), idPlayerFriendList));
 			
 			indexID++;
 			
@@ -260,21 +393,21 @@ public class FriendsUtils {
 		ItemMeta meta;
 		
 		//The return button to OInventory
-		ItemStack returnToOInventory = Utils.getSkullFromURL(HeadFromURL.BACKWARD);
+		ItemStack returnToOInventory = getSkullFromURL(HeadFromURL.BACKWARD);
 		meta = returnToOInventory.getItemMeta();
 		meta.setDisplayName(Lang.RETURN_ARROW.toString());
 		returnToOInventory.setItemMeta(meta);
 		friendGUI.setItem(9 * (rowsForFriendsToShow + 1) - 9, returnToOInventory);
 		
 		//The Previous page
-		ItemStack leftArrow = Utils.getSkullFromURL(HeadFromURL.LEFT_ARROW);
+		ItemStack leftArrow = getSkullFromURL(HeadFromURL.LEFT_ARROW);
 		meta = leftArrow.getItemMeta();
 		meta.setDisplayName(Lang.PREVIOUS_PAGE.toString());
 		leftArrow.setItemMeta(meta);
 		friendGUI.setItem(9 * (rowsForFriendsToShow + 1) - 8, leftArrow);
 		
 		//The Next page
-		ItemStack rightArrow = Utils.getSkullFromURL(HeadFromURL.RIGHT_ARROW);
+		ItemStack rightArrow = getSkullFromURL(HeadFromURL.RIGHT_ARROW);
 		meta = rightArrow.getItemMeta();
 		meta.setDisplayName(Lang.NEXT_PAGE.toString());
 		rightArrow.setItemMeta(meta);
@@ -284,23 +417,57 @@ public class FriendsUtils {
 	}
 
 	//Return the skull of the player with his informations...
-	@SuppressWarnings("unused")
-	private static ItemStack getFriendInfos(int playerID, int viewerID) {
+	@SuppressWarnings({ "unused" })
+	private static ItemStack getFriendInfos(int playerID, int playerFriendID) {
 		
 		//We see if the player has a custom head (returns the custom head id) and we will set this head as the player's head, or the custom head id == 0 and we put the default player head
+		int customHeadId = getPlayerCustomHeadId(playerID);
 		
+		//The head item
+		ItemStack head;
+		
+		//The lore
+		ArrayList<String> lore = new ArrayList<String>();
+		
+		//If it is 0, we put the player's "basic" head
+		if (customHeadId == 0) {
+			head = getPlayerSkull(getPlayerNameById(playerID));
+		} else {
+			head = new ItemStack(Material.SKULL); //TODO Change this for the custom head
+		}
+		
+		//Registered since
+		Calendar cal = Calendar.getInstance();
+		cal.setTimeInMillis(getJoinDate(playerID).getTime());
+		
+		lore.add(Lang.JOIN_DATE.toString().replaceAll("<month>", String.valueOf(cal.get(Calendar.MONTH))).replaceAll("<day>", String.valueOf(cal.get(Calendar.DAY_OF_MONTH))).replaceAll("<year>", String.valueOf(cal.get(Calendar.YEAR))));
+		
+		lore.add(" ");
+		
+		//Nb of friends
+		lore.add(Lang.NUMBER_FRIENDS.toString().replaceAll("<number>", String.valueOf(getFriendsListIds(playerID).size())));
+		
+		lore.add(" ");
+		
+		//Friend since
+		cal.setTimeInMillis(getFriendaversaryDate(playerID, playerFriendID).getTime());
+		lore.add(Lang.FRIEND_SINCE.toString().replaceAll("<month>", String.valueOf(cal.get(Calendar.MONTH))).replaceAll("<day>", String.valueOf(cal.get(Calendar.DAY_OF_MONTH))).replaceAll("<year>", String.valueOf(cal.get(Calendar.YEAR))));
 		
 		//Level
 		
-		//Registered since
-		
-		//Nb of friends
-		
 		//Clan
 		
-		//Friend since
+		//Rank
 		
-		return null;
+		//Glow if this person is connected
+		
+		//Real name of the player //TODO update the database with realname
+		
+		ItemMeta meta = head.getItemMeta();
+		meta.setLore(lore);
+		head.setItemMeta(meta);
+		
+		return head;
 	}
 	
 }
