@@ -10,6 +10,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import fr.mrwormsy.omnivexel.omnifriends.events.Events;
 import fr.mrwormsy.omnivexel.omnifriends.commands.Commands;
 import fr.mrwormsy.omnivexel.omnifriends.lang.Lang;
 import fr.mrwormsy.omnivexel.omnifriends.network.OmniFriendsSQL;
@@ -42,6 +43,9 @@ public class Omnifriends extends JavaPlugin {
     	
         //Register commands
         this.getCommand("friend").setExecutor(new Commands());
+        
+        //Register the events
+        Bukkit.getServer().getPluginManager().registerEvents(new Events(), this);
     	
     }
     

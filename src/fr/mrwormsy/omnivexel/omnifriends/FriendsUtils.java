@@ -7,9 +7,11 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.codec.binary.Base64;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -90,7 +92,7 @@ public class FriendsUtils {
 			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
 			
 			//We add the player database table where it creates a brand new "player id card" for the OmniFriends plugin
-			stmt.executeUpdate("CREATE TABLE IF NOT EXISTS `playerdatabase` ( `idPlayer` INT NOT NULL AUTO_INCREMENT , `playerName` TINYTEXT NOT NULL , `idCustomHead` INT NOT NULL , `dateJoined` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , PRIMARY KEY (`idPlayer`)) ENGINE = MyISAM;");
+			stmt.executeUpdate("CREATE TABLE IF NOT EXISTS `playerdatabase` ( `idPlayer` INT NOT NULL AUTO_INCREMENT , `playerName` TINYTEXT NOT NULL, `realName` TINYTEXT NOT NULL , `idCustomHead` INT NOT NULL , `dateJoined` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, `lastSeen` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , PRIMARY KEY (`idPlayer`)) ENGINE = MyISAM;");
 			
 			stmt.close();
 		} catch (SQLException e) {
@@ -171,7 +173,7 @@ public class FriendsUtils {
 		return 0;
 	}
 	
-	//Get the id of an offline player (player.getName())
+	//Get the name of a player using its ID
 	public static String getPlayerNameById(int idPlayer) {
 		try {
 			Statement stmt;
@@ -190,7 +192,28 @@ public class FriendsUtils {
 		}
 			
 		return "";
+	}
+	
+	//Get the real name of a player using its ID
+	public static String getPlayerRealNameById(int idPlayer) {
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+			ResultSet result = stmt.executeQuery("SELECT realName FROM playerdatabase WHERE idPlayer = '" + idPlayer + "'");
+					
+			//We return the real name
+			if (result.next()) {
+				return result.getString("realName");
+			}
+					
+			result.close();
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
 		}
+				
+		return "";
+	}
 	
 	//Get the custom head id if the player got one (else return 0)
 	public static int getPlayerCustomHeadId(int idPlayer) {
@@ -214,19 +237,48 @@ public class FriendsUtils {
 		return 0;
 		}
 	
-	//Get the friendaversary date of two players
-	public static Timestamp getJoinDate(int idPlayer) {
+	//Get the last seen formated String of the player
+	public static String getLastSeen(int idPlayer) {
 			
 		try {
 			Statement stmt;
 			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
 				
 			//We want to know when the player joined the server
-			ResultSet result = stmt.executeQuery("SELECT `dateJoined` FROM `playerdatabase` WHERE idPlayer = '" + idPlayer + "'");
+			ResultSet result = stmt.executeQuery("SELECT `lastSeen` FROM `playerdatabase` WHERE idPlayer = '" + idPlayer + "'");
 				
-			//If result.next() returns true, we return the join date
+			//If result.next() returns true, we return the last seen date formated...
 			if (result.next()) {
-				return result.getTimestamp("dateJoined");
+				
+				//String to return
+				String toReturn = "";
+				
+				//Get the lastSeen time bewteen now and the last time the player has logged out (in seconds)
+				long lastSeen = (System.currentTimeMillis() - result.getTimestamp("lastSeen").getTime());
+				
+				//Get the number of days
+				long days = TimeUnit.MILLISECONDS.toDays(lastSeen);
+				if (days != 0) {
+					toReturn = toReturn.concat(Lang.DAYS.toString().replaceAll("<days>", String.valueOf(days))).concat(", ");
+				}
+				
+				//Get the number of hours
+				long hours = TimeUnit.MILLISECONDS.toHours(lastSeen - TimeUnit.DAYS.toMillis(days));
+				if (hours != 0) {
+					toReturn = toReturn.concat(Lang.HOURS.toString().replaceAll("<hours>", String.valueOf(hours))).concat(", ");
+				}
+				
+				//Get the number of minutes
+				long minutes = TimeUnit.MILLISECONDS.toMinutes(lastSeen - TimeUnit.DAYS.toMillis(days) - TimeUnit.HOURS.toMillis(hours));
+				if (minutes != 0) {
+					toReturn = toReturn.concat(Lang.MINUTES.toString().replaceAll("<minutes>", String.valueOf(minutes)));
+				}
+				
+				if (toReturn.charAt(toReturn.length() - 2) == ',') {
+					toReturn = toReturn.substring(0, toReturn.length() - 3);
+				}
+				
+				return toReturn;
 			}
 				
 			result.close();
@@ -239,12 +291,54 @@ public class FriendsUtils {
 		return null;
 	}
 	
+	//Set the Timestamp of the last seen date
+	public static void setLastSeen(int idPlayer, Timestamp timestamp) {
+		
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+			
+			//We update the lastSeen timestamp according to the player
+			stmt.executeUpdate("UPDATE `playerdatabase` SET `lastSeen`='"+ timestamp.toString() +"' WHERE idPlayer = '" + idPlayer + "'");
+			
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	//Get the join date of the player
+	public static Timestamp getJoinDate(int idPlayer) {
+				
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+					
+			//We want to know when the player joined the server
+			ResultSet result = stmt.executeQuery("SELECT `dateJoined` FROM `playerdatabase` WHERE idPlayer = '" + idPlayer + "'");
+					
+			//If result.next() returns true, we return the join date
+			if (result.next()) {
+				return result.getTimestamp("dateJoined");
+			}
+					
+			result.close();
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+				
+		//If we reach here there is a problem :'(
+		return null;
+	}
+	
 	//Add the player to the player database
 	public static void createPlayerDataBase(Player player) {
 		try {
 			Statement stmt;
 			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
-			stmt.execute("INSERT INTO `playerdatabase`(`playerName`, `idCustomHead`) VALUES ('" + player.getName().toLowerCase() + "','0')");
+			stmt.execute("INSERT INTO `playerdatabase`(`playerName`, `realName`, `idCustomHead`) VALUES ('" + player.getName().toLowerCase() + "', '" + player.getName() + "','0')");
 			
 			stmt.close();
 		} catch (SQLException e) {
@@ -302,7 +396,7 @@ public class FriendsUtils {
 			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
 			
 			//We want to know if we can gather the id of the first player when these two are friends
-			ResultSet result = stmt.executeQuery("SELECT `idFriend1` FROM `FriendList` WHERE idFriend1 = '" + player1ID + "' AND idFriend2 = '" + player2ID + "'");
+			ResultSet result = stmt.executeQuery("SELECT `idFriend1` FROM `FriendList` WHERE (idFriend1 = '" + player1ID + "' AND idFriend2 = '" + player2ID + "') OR (idFriend1 = '" + player2ID + "' AND idFriend2 = '" + player1ID + "')");
 			
 			//If this returns true, we know that they are already friends
 			if (result.next()) {
@@ -343,7 +437,7 @@ public class FriendsUtils {
 			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
 			
 			//We want to know the friendaversary date of those two players...
-			ResultSet result = stmt.executeQuery("SELECT `date` FROM `FriendList` WHERE idFriend1 = '" + player1ID + "' AND idFriend2 = '" + player2ID + "'");
+			ResultSet result = stmt.executeQuery("SELECT `date` FROM `FriendList` WHERE (idFriend1 = '" + player1ID + "' AND idFriend2 = '" + player2ID + "') OR (idFriend1 = '" + player2ID + "' AND idFriend2 = '" + player1ID + "')");
 			
 			//If result.next() returns true, we return the friendaversary date
 			if (result.next()) {
@@ -417,7 +511,6 @@ public class FriendsUtils {
 	}
 
 	//Return the skull of the player with his informations...
-	@SuppressWarnings({ "unused" })
 	private static ItemStack getFriendInfos(int playerID, int playerFriendID) {
 		
 		//We see if the player has a custom head (returns the custom head id) and we will set this head as the player's head, or the custom head id == 0 and we put the default player head
@@ -436,37 +529,57 @@ public class FriendsUtils {
 			head = new ItemStack(Material.SKULL); //TODO Change this for the custom head
 		}
 		
+		//The meta
+		ItemMeta meta = head.getItemMeta();
+		
 		//Registered since
 		Calendar cal = Calendar.getInstance();
 		cal.setTimeInMillis(getJoinDate(playerID).getTime());
-		
 		lore.add(Lang.JOIN_DATE.toString().replaceAll("<month>", String.valueOf(cal.get(Calendar.MONTH))).replaceAll("<day>", String.valueOf(cal.get(Calendar.DAY_OF_MONTH))).replaceAll("<year>", String.valueOf(cal.get(Calendar.YEAR))));
 		
+		//New line
 		lore.add(" ");
 		
 		//Nb of friends
 		lore.add(Lang.NUMBER_FRIENDS.toString().replaceAll("<number>", String.valueOf(getFriendsListIds(playerID).size())));
 		
+		//New line
 		lore.add(" ");
 		
 		//Friend since
 		cal.setTimeInMillis(getFriendaversaryDate(playerID, playerFriendID).getTime());
 		lore.add(Lang.FRIEND_SINCE.toString().replaceAll("<month>", String.valueOf(cal.get(Calendar.MONTH))).replaceAll("<day>", String.valueOf(cal.get(Calendar.DAY_OF_MONTH))).replaceAll("<year>", String.valueOf(cal.get(Calendar.YEAR))));
 		
-		//Level
+		//New line
+		lore.add(" ");
 		
-		//Clan
+		//Say if this player is connected
+		if (Omnifriends.getPlugin().getServer().getPlayer(getPlayerRealNameById(playerID)) != null) {
+			lore.add(Lang.CONNECTED.toString());
+		} else {
+			lore.add(Lang.DISCONNECTED.toString() + Lang.LAST_SEEN.toString().replaceAll("<lastseen>", getLastSeen(playerID))); //TODO Last seen in term of minutes, hours and days
+		}
 		
-		//Rank
-		
-		//Glow if this person is connected
-		
-		//Real name of the player //TODO update the database with realname
-		
-		ItemMeta meta = head.getItemMeta();
+		//This part is reserved for the OmnivexelProject...
+		if (isPartOfOmnivexelProject()) {
+			//Level
+			
+			//Clan
+			
+			//Rank
+			
+			//Last OWorld
+		}
+				
+		//We set the lore, display name and the meta
 		meta.setLore(lore);
+		meta.setDisplayName(ChatColor.GREEN + FriendsUtils.getPlayerRealNameById(playerID));
+		
+		//TODO IF THE FRIEND HAS A NICKNAME BY THE PLAYER WE PUT IT ON THE SKULL "name (nickname)"
+		
 		head.setItemMeta(meta);
 		
+		//We return the head
 		return head;
 	}
 	
