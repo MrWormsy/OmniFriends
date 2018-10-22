@@ -1,4 +1,4 @@
-#MySQL Config
+#MySQL Config (needed)
 DataBaseURL: 'localhost:3306/OmniFriends'
 DataBaseUsername: 'root'
 DataBasePassword: ''
