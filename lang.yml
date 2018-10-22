@@ -1,8 +1,40 @@
 # Use & for color codes.
-# %p is where the player name will get inserted.
-title-name: "&4[&PluginName&4]:"
-player-is-cool: "&f%p is cool."
-player-only: "Sorry but that can only be run by a player!"
-must-be-number: "&cYou need to specify a number, not a word."
-invalid-args: "&cInvalid args!"
-no-permissions: "&cYou don't have permission for that!"
+friends_inventory_name: "&aFriends GUI"
+previous_page: "&ePrevious page"
+next_page: "&eNext page"
+return_arrow: "&eReturn to your friend list"
+join_date: "&eJoined the &7<month>/<day>/<year>"
+number_friends: "&7This player has &a<number> &7Friends"
+friend_since: "&eFriendaversary &7<month>/<day>/<year>"
+friend_joined: "&aYour friend &e<name> &ahas joined the server !"
+friend_quit: "&aYour friend &e<name> &ahas quit the server !"
+connected: "&aConnected"
+disconnected: "&cDisconnected"
+last_seen: " &7(Last seen <lastseen> ago)"
+days: "&7<days> Days"
+hours: "&7<hours> Hours"
+minutes: "&7<minutes> Minutes"
+subcommand_not_found: "&cSorry subcommand not found, try &e/friend help&c."
+player_not_found: "&cSorry player not found..."
+player_not_online: "&cSorry player not online..."
+player_not_friend: "&cSorry &e<friend> &cis not your friend..."
+player_already_friend: "&aYou are already friend with &e<friend>"
+player_denied_friend_request: "&e<friend> &cdenied your friend request..."
+help: "&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e- &6&lOmniFriends &eHelp &e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-\n
+				&6/friend list <player> &eshow the friend list of a player\n
+				&6/friend add [player] &esend a friend request to the player\n
+				&6/friend accept [player] &eaccept the friend request sent by the player\n
+				&6/friend deny [player] &edeny the friend request sent by the player\n
+				&6/friend remove [player] &eremove the player from your friend list\n
+				&6/friend nickname [player] <nickname> &egive a nickname to a friend (remove it if no nickname)\n
+				&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e- &6&lOmniFriends &eHelp &e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-&6*&e-"
+cannot_with_itsself: "&cYou cannot do friend's stuffs with yourself..."
+send_friend_request: "&aYou sent a friend request to &e<player>"
+receive_friend_request: "&e<player> &awants to be friend with you, type &e/friend &aaccept&7/&cdeny &e<player>"
+friend_request_has_expired: "&cYour friend request from &e<player> &chas expired"
+already_sent_friend_request: "&cYou have already sent a friend request to &e<player>"
+friend_request_not_received: "&cYou did not receive any friend request from &e<player>"
+friend_request_accepted: "&aCongratulations, you are now friend with &e<player>"
+remove_friendship: "&aYou are no longer friend with &e<player>"
+new_nickname: "&aYour friend will now be known as &r<nickname>"
+remove_nickname: "&aYou will now know your friend by his true name"

@@ -5,3 +5,6 @@ DataBasePassword: ''
 
 #Numbers of rows to show to the player when doing /friend (must be between 1 and 5, default 3)
 RowsForFriendsToShow: 3
+
+#Lifetime of a friend request (in seconds)
+FriendRequestLifeTime: 30

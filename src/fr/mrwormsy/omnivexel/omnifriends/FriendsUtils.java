@@ -31,6 +31,13 @@ public class FriendsUtils {
 	//Config setting to know how many rows we show to the player when doing /friend
 	private static int rowsForFriendsToShow;
 	
+	public static int getRowsForFriendsToShow() {
+		return rowsForFriendsToShow;
+	}
+	
+	//Config setting to know the lifetime of a friend request
+	private static long friendRequestLifetime;
+	
 	//Enum to get custom heads from URL
 	public enum HeadFromURL {
 		LEFT_ARROW("http://textures.minecraft.net/texture/86971dd881dbaf4fd6bcaa93614493c612f869641ed59d1c9363a3666a5fa6"), 
@@ -100,7 +107,7 @@ public class FriendsUtils {
 		}
 		
 		
-		//We try to create this table (to store the friends' connections)
+		//We try to create this table (to store the friends' relationships)
 		//CREATE TABLE IF NOT EXISTS `friendlist` (`idFriend1` int(11) NOT NULL, `idFriend2` int(11) NOT NULL, `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`idFriend1`,`idFriend2`)) ENGINE=MyISAM;
 		try {
 			Statement stmt;
@@ -114,10 +121,41 @@ public class FriendsUtils {
 			e.printStackTrace();
 		}
 		
+		//We try to create this table (to temporarily store friends request)
+		//CREATE TABLE IF NOT EXISTS `requestsList` (`idFriend1` int(11) NOT NULL, `idFriend2` int(11) NOT NULL, PRIMARY KEY (`idFriend1`,`idFriend2`)) ENGINE=MyISAM;
+			try {
+				Statement stmt;
+				stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+					
+				//We add the friend list table where it connects two player with a friendaversary date
+				stmt.executeUpdate("CREATE TABLE IF NOT EXISTS `requestsList` (`idFriend1` int(11) NOT NULL, `idFriend2` int(11) NOT NULL, PRIMARY KEY (`idFriend1`,`idFriend2`)) ENGINE=MyISAM;");
+					
+				stmt.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+			
+		//We try to create this table (to store the friends' nicknames)
+		//CREATE TABLE IF NOT EXISTS `friendNicknames` (`idFriend1` int(11) NOT NULL, `idFriend2` int(11) NOT NULL, `nickname` TINYTEXT NOT NULL, PRIMARY KEY (`idFriend1`,`idFriend2`)) ENGINE=MyISAM;
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+				
+			//We add the friend list table where it connects two player with a friendaversary date
+			stmt.executeUpdate("CREATE TABLE IF NOT EXISTS `friendNicknames` (`idFriend1` int(11) NOT NULL, `idFriend2` int(11) NOT NULL, `nickname` TINYTEXT NOT NULL, PRIMARY KEY (`idFriend1`,`idFriend2`)) ENGINE=MyISAM;");
+				
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		
 		//TODO Custom head table	
 		
 		//We set the number of rows for the GUI friendInventory
 		rowsForFriendsToShow = Omnifriends.getPlugin().getConfig().getInt("RowsForFriendsToShow");
+		
+		//We set the lifetime of a friend request
+		friendRequestLifetime = Omnifriends.getPlugin().getConfig().getInt("FriendRequestLifeTime");
 	}
 
 	//Check if this this plugin must be run inside the Omnivexel Project or not
@@ -274,8 +312,15 @@ public class FriendsUtils {
 					toReturn = toReturn.concat(Lang.MINUTES.toString().replaceAll("<minutes>", String.valueOf(minutes)));
 				}
 				
-				if (toReturn.charAt(toReturn.length() - 2) == ',') {
-					toReturn = toReturn.substring(0, toReturn.length() - 3);
+				//If the player logged out several seconds ago we set the last seen time to 1 minute
+				if (days == 0 && hours == 0 && minutes == 0) {
+					toReturn = toReturn.concat(Lang.MINUTES.toString().replaceAll("<minutes>", String.valueOf(1)));
+				}
+				
+				if (toReturn.length() >= 2) {
+					if (toReturn.charAt(toReturn.length() - 2) == ',') {
+						toReturn = toReturn.substring(0, toReturn.length() - 3);
+					}
 				}
 				
 				return toReturn;
@@ -413,15 +458,15 @@ public class FriendsUtils {
 		return false;
 	}
 	
-	//Add two friends (that are not initialy friends)
-	public static void addFriendToFriendsList(int player1ID, int player2ID) {
+	//Add friendship between two friends
+	public static void addFriendship(int player1ID, int player2ID) {
 		
 		try {
 			Statement stmt;
 			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
 			
 			//We add a friendship link between those two players (the date is automatic)
-			stmt.executeUpdate("INSERT INTO `FriendList`(`idFriend1`, `idFriend2`) VALUES ('" + player1ID + "', '" + player1ID + "')");
+			stmt.executeUpdate("INSERT INTO `FriendList`(`idFriend1`, `idFriend2`) VALUES ('" + player1ID + "', '" + player2ID + "')");
 			
 			stmt.close();
 		} catch (SQLException e) {
@@ -429,6 +474,22 @@ public class FriendsUtils {
 		}
 	}
 	
+	//Remove friendship between two friends
+	public static void removeFriendship(int player1ID, int player2ID) {
+			
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+				
+			//We add a friendship link between those two players (the date is automatic)
+			stmt.executeUpdate("DELETE FROM `friendlist` WHERE (idFriend1 = " + player1ID + " AND idFriend2 = " + player2ID + ") OR (idFriend1 = " + player2ID + " AND idFriend2 = " + player1ID + ")");
+				
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+		
 	//Get the friendaversary date of two players
 	public static Timestamp getFriendaversaryDate(int player1ID, int player2ID) {
 		
@@ -454,18 +515,121 @@ public class FriendsUtils {
 		return null;
 	}
 	
+	//Return true if the player sent a friend request to a second one
+	public static boolean hasSentFriendRequest(int player1ID, int player2ID) {
+			
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+				
+			//We want to know if we can gather the id of the first player when a friend request has been sent
+			ResultSet result = stmt.executeQuery("SELECT `idFriend1` FROM `requestsList` WHERE idFriend1 = '" + player1ID + "' AND idFriend2 = '" + player2ID + "'");
+				
+			//If this returns true, we know that a friend request has already been sent
+			if (result.next()) {
+				return true;
+			}
+				
+			result.close();
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+			
+		return false;
+		}
+	
+	//Add a friend request from the player1 to the player2
+	public static void addFriendRequest(int player1ID, int player2ID) {
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+				
+			//We add a friend request to the database
+			stmt.executeUpdate("INSERT INTO `requestsList`(`idFriend1`, `idFriend2`) VALUES ('" + player1ID + "', '" + player2ID + "')");
+				
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	//Remove a friend request between two friends
+	public static void removeFriendRequest(int player1ID, int player2ID) {
+				
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+					
+			//We add a friendship link between those two players (the date is automatic)
+			stmt.executeUpdate("DELETE FROM `requestsList` WHERE idFriend1 = " + player1ID + " AND idFriend2 = " + player2ID + "");
+					
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	//Add a nickname to the player's friend or remove the nickname of the player's friend (if the nickname is null)
+	public static void addNicknameToFriend(Player player1, int player2ID, String nickname) {		
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+			
+			
+			//First we have to check if the string is null (remove the nickname)...
+			if (nickname != null) {
+				//We add a nickname to the player's friend
+				stmt.executeUpdate("DELETE FROM `friendNicknames` WHERE idFriend1 = " + FriendsUtils.getPlayerId(player1.getName()) + " AND idFriend2 = " + player2ID + "");
+				stmt.executeUpdate("INSERT INTO `friendNicknames`(`idFriend1`, `idFriend2`, `nickname`) VALUES ('" + FriendsUtils.getPlayerId(player1.getName()) + "', '" + player2ID + "', '" + nickname + "')");
+				player1.sendMessage(Lang.NEW_NICKNAME.toString().replaceAll("<nickname>", ChatColor.translateAlternateColorCodes('&', nickname)));
+			} else {
+				//We remove the nickname of the player's friend
+				stmt.executeUpdate("DELETE FROM `friendNicknames` WHERE idFriend1 = " + FriendsUtils.getPlayerId(player1.getName()) + " AND idFriend2 = " + player2ID + "");
+				player1.sendMessage(Lang.REMOVE_NICKNAME.toString());
+			}
+				
+			stmt.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	//Get the niclname of a player's friend (return null if no nickname)
+	public static String getFriendNickname(int player1ID, int player2ID) {
+		try {
+			Statement stmt;
+			stmt = (Statement) OmniFriendsSQL.getConnection().createStatement();
+					
+			//Get the nicnkame of the player2 given by the player1
+			ResultSet result = stmt.executeQuery("SELECT `nickname` FROM `friendNicknames` WHERE idFriend1 = " + player1ID + " AND idFriend2 = " + player2ID + "");
+					
+			//Return the nickname if there is one
+			if (result.next()) {
+				return result.getString("nickname");
+			} else {
+				return null;
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+				
+		//If we reach here there is a problem :'(
+		return null;
+	}
+		
 	//Open the id's friend list to player, we suppose that the page exist already (that is to say the player has more than ((1 - page) * friendsToShow) friends)
 	public static void openFriendsGUI(Player player, int idPlayerFriendList, int page) {
 				
 		//The GUI
-		Inventory friendGUI = Bukkit.createInventory(null, 9 * (rowsForFriendsToShow + 1), Lang.FRIENDS_INVENTORY_NAME.toString());
+		Inventory friendGUI = Bukkit.createInventory(null, 9 * (rowsForFriendsToShow + 1), Lang.FRIENDS_INVENTORY_NAME.toString().concat(ChatColor.GRAY + " - (" + String.valueOf(page) + ")"));
 		
 		//The friend list
 		ArrayList<Integer> friendsList = FriendsUtils.getFriendsListIds(idPlayerFriendList);
 		
 		int forID;
 		
-		int indexID = (1 - page) * (rowsForFriendsToShow * 9);
+		int indexID = (page - 1) * (rowsForFriendsToShow * 9);
 		
 		//We loop all the first rowsForFriendsToShow to put the friends' ids
 		for (forID = 0; forID < (rowsForFriendsToShow * 9); forID++) {
@@ -499,6 +663,13 @@ public class FriendsUtils {
 		meta.setDisplayName(Lang.PREVIOUS_PAGE.toString());
 		leftArrow.setItemMeta(meta);
 		friendGUI.setItem(9 * (rowsForFriendsToShow + 1) - 8, leftArrow);
+		
+		//The Next page
+		ItemStack playerHead = getPlayerSkull(getPlayerRealNameById(idPlayerFriendList));
+		meta = playerHead.getItemMeta();
+		meta.setDisplayName(ChatColor.GREEN + FriendsUtils.getPlayerRealNameById(idPlayerFriendList));
+		playerHead.setItemMeta(meta);
+		friendGUI.setItem(9 * (rowsForFriendsToShow + 1) - 5, playerHead);
 		
 		//The Next page
 		ItemStack rightArrow = getSkullFromURL(HeadFromURL.RIGHT_ARROW);
@@ -573,14 +744,72 @@ public class FriendsUtils {
 				
 		//We set the lore, display name and the meta
 		meta.setLore(lore);
-		meta.setDisplayName(ChatColor.GREEN + FriendsUtils.getPlayerRealNameById(playerID));
 		
-		//TODO IF THE FRIEND HAS A NICKNAME BY THE PLAYER WE PUT IT ON THE SKULL "name (nickname)"
+		//Check if the player has a nickname from his friend and then apply it
+		String nickname = FriendsUtils.getFriendNickname(playerFriendID, playerID);
+		if (nickname != null) {
+			meta.setDisplayName(ChatColor.GREEN + FriendsUtils.getPlayerRealNameById(playerID) + ChatColor.GRAY + " (" + ChatColor.RESET + ChatColor.translateAlternateColorCodes('&', nickname) + ChatColor.GRAY + ")");
+		} else {
+			meta.setDisplayName(ChatColor.GREEN + FriendsUtils.getPlayerRealNameById(playerID));
+		}
 		
 		head.setItemMeta(meta);
 		
 		//We return the head
 		return head;
 	}
-	
+
+	//Send a friend request to the player
+	public static void sendFriendRequest(Player player, Player friend) {
+		
+		//TODO INTERACTIVE STUFF HERE
+		
+		//First we send the messages
+		player.sendMessage(Lang.SEND_FRIEND_REQUEST.toString().replaceAll("<player>", friend.getName()));
+		friend.sendMessage(Lang.RECEIVE_FRIEND_REQUEST.toString().replaceAll("<player>", player.getName()));
+		
+		//Then we make the request into the request database (then delete it after 30s if the player does not give an answer)
+		FriendsUtils.addFriendRequest(FriendsUtils.getPlayerId(player.getName()), FriendsUtils.getPlayerId(friend.getName()));
+		Bukkit.getScheduler().runTaskLater(Omnifriends.getPlugin(), new Runnable() {
+			
+			@Override
+			public void run() {
+
+				//We check if the friend request has not beed accpeted to warn the player and to delete it
+				if (FriendsUtils.hasSentFriendRequest(FriendsUtils.getPlayerId(player.getName()), FriendsUtils.getPlayerId(friend.getName()))) {
+					FriendsUtils.removeFriendRequest(FriendsUtils.getPlayerId(player.getName()), FriendsUtils.getPlayerId(friend.getName()));
+					friend.sendMessage(Lang.FRIEND_REQUEST_HAS_EXPIRED.toString().replaceAll("<player>", player.getName()));
+				}
+				
+			}
+		}, 20 * friendRequestLifetime);
+		
+	}
+
+	//Accept a friend request from the player
+	public static void acceptFriendRequest(Player player, Player friend) {
+
+		//First we send the messages
+		player.sendMessage(Lang.FRIEND_REQUEST_ACCEPTED.toString().replaceAll("<player>", friend.getName()));
+		friend.sendMessage(Lang.FRIEND_REQUEST_ACCEPTED.toString().replaceAll("<player>", player.getName()));
+		
+		//Then we remove the request from the database
+		FriendsUtils.removeFriendRequest(FriendsUtils.getPlayerId(friend.getName()), FriendsUtils.getPlayerId(player.getName()));
+		
+		//And the add their friendship to the database
+		FriendsUtils.addFriendship(FriendsUtils.getPlayerId(friend.getName()), FriendsUtils.getPlayerId(player.getName()));
+		
+	}
+
+	//Deny a friend request from the player
+	public static void denyFriendRequest(Player player, Player friend) {
+
+		//We send a message to the friend to tell him the player is not willing to be friend with him
+		friend.sendMessage(Lang.PLAYER_DENIED_FRIEND_REQUEST.toString().replaceAll("<friend>", player.getName()));
+		
+		//Then we remove the request from the database
+		FriendsUtils.removeFriendRequest(FriendsUtils.getPlayerId(friend.getName()), FriendsUtils.getPlayerId(player.getName()));
+		
+	}
+
 }

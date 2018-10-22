@@ -1,8 +1,8 @@
 name: OmniFriends
 main:  fr.mrwormsy.omnivexel.omnifriends.Omnifriends
-version: 0.1
+version: 1.0
 depend:
 author: MrWormsy
 commands:
    friend:
-      description: This is a demo command.
+      description: The basic OmniFriends command
